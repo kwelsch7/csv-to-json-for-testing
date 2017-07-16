@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.IO;
 
 namespace CsvToJson
@@ -8,10 +9,17 @@ namespace CsvToJson
         public static void Main(string[] args)
         {
             string csvPath = CheckArgs(args);
+            List<string> allLines = new List<string>();
 
             using (FileStream fileStream = File.Open(csvPath, FileMode.Open, FileAccess.Read))
             {
-
+                using (StreamReader reader = new StreamReader(fileStream))
+                {
+                    while(!reader.EndOfStream)
+                    {
+                        allLines.Add(reader.ReadLine());
+                    }
+                }
             }
         }
 
