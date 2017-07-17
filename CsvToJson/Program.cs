@@ -85,9 +85,42 @@ namespace CsvToJson
 
         public static void BeautifyAndPrintJson(string json)
         {
-            // do more stuff
+            string prependLine = "";
+            for (int c = 0; c < json.Length; c++)
+            {
+                if(c > 0 && (json[c - 1] == '[' || json[c - 1] == '{' || json[c - 1] == ','))
+                {
+                    Console.Write(prependLine);
+                }
+                Console.Write(json[c]);
+                if (json[c] == '[' || json[c] == '{')
+                {
+                    if(!(c == json.Length) && json[c + 1] != '}' && json[c + 1] != ']')
+                    {
+                        Console.Write("\r\n");
+                        prependLine += "  ";
+                    }
+                }
+                else if(c < json.Length - 1 && (json[c + 1] == '}' || json[c + 1] == ']'))
+                {
+                    if(prependLine.Length > 1)
+                    {
+                        Console.Write("\r\n");
+                        prependLine = prependLine.Substring(0, prependLine.Length - 2);
+                        Console.Write(prependLine);
+                    }
+                }
 
-            Console.WriteLine(json);
+                if(json[c] == ':')
+                {
+                    Console.Write(" ");
+                }
+                if(json[c] == ',')
+                {
+                    Console.Write(prependLine);
+                    Console.Write("\r\n");
+                }
+            }
         }
     }
 }
