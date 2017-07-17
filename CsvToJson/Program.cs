@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Text;
 
 namespace CsvToJson
 {
@@ -21,6 +22,10 @@ namespace CsvToJson
                     }
                 }
             }
+
+            string theJson = ToJson(allLines);
+
+            BeautifyAndPrintJson(theJson);
         }
 
         public static string CheckArgs(string[] args)
@@ -31,7 +36,7 @@ namespace CsvToJson
                 Environment.Exit(1);
             }
 
-            if(args[0].Substring(args[0].Length - 4) != ".csv")
+            if(args[0].Length < 4 || args[0].Substring(args[0].Length - 4) != ".csv")
             {
                 Console.WriteLine("Given argument not a CSV file. Exiting");
                 Environment.Exit(2);
@@ -44,6 +49,45 @@ namespace CsvToJson
             }
 
             return args[0];
+        }
+
+        public static string ToJson(List<string> lines)
+        {
+            StringBuilder theJson = new StringBuilder("[");
+            string[] keys = lines[0].Split(',');
+            List<string[]> values = new List<string[]>();
+            for(int x = 1; x < lines.Count; x++)
+            {
+                values.Add(lines[x].Split(','));
+            }
+
+            foreach(var valueSet in values)
+            {
+                theJson.Append("{");
+                for (int y = 0; y < keys.Length; y++)
+                {
+                    theJson.Append($@"""{ keys[y].Trim() }"":""{ valueSet[y].Trim() }""");
+                    if(keys.Length - 1 != y)
+                    {
+                        theJson.Append(",");
+                    }
+                }
+                theJson.Append("}");
+                if (valueSet != values[values.Count - 1])
+                {
+                    theJson.Append(",");
+                }
+            }
+            theJson.Append("]");
+
+            return theJson.ToString();
+        }
+
+        public static void BeautifyAndPrintJson(string json)
+        {
+            // do more stuff
+
+            Console.WriteLine(json);
         }
     }
 }
