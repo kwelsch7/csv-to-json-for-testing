@@ -68,6 +68,12 @@ namespace CsvToJson
 
             foreach(var valueSet in values)
             {
+                if(valueSet.Length != keys.Length)
+                {
+                    Console.WriteLine("Given file not in correct format; all rows must have same number of columns. Exiting");
+                    Environment.Exit(2);
+                }
+
                 theJson.Append("{");
                 for (int y = 0; y < keys.Length; y++)
                 {
