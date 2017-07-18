@@ -53,6 +53,11 @@ namespace CsvToJson
 
         public static string ToJson(List<string> lines)
         {
+            if (lines.Count == 0)
+            {
+                return "[]";
+            }
+
             StringBuilder theJson = new StringBuilder("[");
             string[] keys = lines[0].Split(',');
             List<string[]> values = new List<string[]>();
@@ -121,6 +126,7 @@ namespace CsvToJson
                     Console.Write("\r\n");
                 }
             }
+            Console.WriteLine();
         }
     }
 }
