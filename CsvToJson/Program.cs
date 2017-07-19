@@ -10,39 +10,46 @@ namespace CsvToJson
     {
         public static int Main(string[] args)
         {
-            // rather than using Environment.Exit() to blow up, always bubble it to the top (especially since it might be someone else using your code, not all one app like here)
             try
             {
                 string csvPath = CheckArgs(args);
 
-                // Filling allLines (with the StreamReader business below) should be pulled out into a method
-                List<string> allLines = new List<string>();
-
-                // This can be done with nested usings (and is preferred for readability) to the set of braces under the first using
-                using (FileStream fileStream = File.Open(csvPath, FileMode.Open, FileAccess.Read))
-                using (StreamReader reader = new StreamReader(fileStream))
-                {
-                    // Josh made it sound like (but didn't explicitely say) there's a way to do this all at once/without a while loop
-                    while (!reader.EndOfStream)
-                    {
-                        allLines.Add(reader.ReadLine());
-                    }
-                }
+                List<string> allLines = ParseCsv(csvPath);
 
                 string theJson = ToJson(allLines);
 
                 BeautifyAndPrintJson(theJson);
             }
-            // We could say that Main's only job is to call a bunch of other stuff, so one way of thinking of things is that it's all one try/catch block, the final point for success or explosions
-            catch(ArgumentException caught)
+
+
+            catch(ArgumentException caughtArg)
             {
-                Console.WriteLine(caught.Message);
+                Console.WriteLine(caughtArg.Message);
+                Console.WriteLine("Exiting");
                 return 1;
             }
-            // more specific exceptions, then finally the Pokemon exception printing the whole stack trace
+            catch(FormatException caughtFormat)
+            {
+                Console.WriteLine(caughtFormat.Message);
+                Console.WriteLine("Exiting");
+                return 2;
+            }
+            catch(FileNotFoundException caughtFileNotFound)
+            {
+                Console.WriteLine(caughtFileNotFound.Message);
+                Console.WriteLine("Exiting");
+                return 1;
+            }
+            catch(IOException caughtIO)
+            {
+                Console.WriteLine(caughtIO.Message);
+                Console.WriteLine("Exiting");
+                return -1; // Probably want to actually look these up
+            }
             catch(Exception caught)
             {
                 Console.WriteLine(caught);
+                Console.WriteLine("Exiting");
                 return -99;
             }
 
@@ -51,26 +58,38 @@ namespace CsvToJson
 
         public static string CheckArgs(string[] args)
         {
-            // Bubble up exceptions rather than bailing here
             if (args.Length < 1)
             {
-                throw new ArgumentException("No arguments given. Exiting");
+                throw new ArgumentException("No arguments given.");
             }
 
-            // There is an "EndsWith" method for strings
-            if(args[0].Length < 4 || args[0].Substring(args[0].Length - 4) != ".csv")
+            if(!args[0].EndsWith(".csv"))
             {
-                Console.WriteLine("Given argument not a CSV file. Exiting");
-                Environment.Exit(2);
+                throw new FormatException("Given argument not a CSV file.");
             }
 
             if(!File.Exists(args[0]))
             {
-                Console.WriteLine("Given file not found. Exiting");
-                Environment.Exit(1);
+                throw new FileNotFoundException("Given file not found.");
             }
 
             return args[0];
+        }
+
+        public static List<string> ParseCsv(string csvPath)
+        {
+            List<string> allLines = new List<string>();
+
+            using (FileStream fileStream = File.Open(csvPath, FileMode.Open, FileAccess.Read))
+            using (StreamReader reader = new StreamReader(fileStream))
+            {
+                while (!reader.EndOfStream)
+                {
+                    allLines.Add(reader.ReadLine());
+                }
+            }
+
+            return allLines;
         }
 
         public static string ToJson(List<string> lines)
@@ -80,37 +99,20 @@ namespace CsvToJson
                 return "[]";
             }
 
-            StringBuilder theJson = new StringBuilder("[");
-            // pull out ParseCSV into its own method
-            string[] keys = lines[0].Split(',').Select(line => line.Trim()).ToArray();
-            List<string[]> values = new List<string[]>();
-            // Use linq to start at 1 instead of for loop
-            for(int x = 1; x < lines.Count; x++)
-            {
-                values.Add(lines[x].Split(','));
-            }
+            string[] keys = lines[0].Split(',').Select(key => key.Trim()).ToArray();
+            List<string[]> values = ParseValues(lines.Skip(1));
 
-            foreach(var valueSet in values) // could pull out into method "GenerateLine" or something
+            StringBuilder theJson = new StringBuilder("[");
+            foreach (var valueSet in values)
             {
                 if(valueSet.Length != keys.Length)
                 {
-                    // Exception, not exit (perhaps define my own specific kind)
-                    Console.WriteLine("Given file not in correct format; all rows must have same number of columns. Exiting");
-                    Environment.Exit(2);
+                    throw new FormatException("Given file not in correct format; all rows must have same number of columns.");
                 }
 
-                theJson.Append("{");
-                // could convert to a foreach and keep my own index
-                for (int y = 0; y < keys.Length; y++)
-                {
-                    theJson.Append($@"""{ keys[y] }"":""{ valueSet[y] }""");
-                    if(keys.Length - 1 != y)
-                    {
-                        theJson.Append(",");
-                    }
-                }
-                theJson.Append("}"); // this would be an easy spot to add, say, a newline vs. having a complicated beautify method that comes back into this string later
-                if (valueSet != values[values.Count - 1])
+                theJson.Append(AppendKeyValues(keys, valueSet));
+
+                if (valueSet != values.Last())
                 {
                     theJson.Append(",");
                 }
@@ -118,6 +120,36 @@ namespace CsvToJson
             theJson.Append("]");
 
             return theJson.ToString();
+        }
+
+        public static List<string[]> ParseValues(IEnumerable<string> lines)
+        {
+            List<string[]> values = new List<string[]>();
+            foreach (string line in lines)
+            {
+                values.Add(line.Split(',').Select(value => value.Trim()).ToArray());
+            }
+
+            return values;
+        }
+
+        public static string AppendKeyValues(string[] keys, string[] valueSet)
+        {
+            StringBuilder keyValueObject = new StringBuilder("{");
+            int matchingIndex = 0;
+
+            foreach(string key in keys)
+            {
+                keyValueObject.Append($@"""{ key }"":""{ valueSet[matchingIndex] }""");
+                if (key != keys.Last())
+                {
+                    keyValueObject.Append(",");
+                }
+                matchingIndex++;
+            }
+            keyValueObject.Append("}");
+
+            return keyValueObject.ToString();
         }
 
         public static void BeautifyAndPrintJson(string json) // could put this logic in the json builder, which could have an option for pretty/not pretty
